@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "2b973e70-7f07-4703-a042-33893ee78460",
+      "name": "Test User",
+      "username": "testuser123",
+      "role": "student",
+      "passwordHash": "07f2ff7542a2627cf2e71d31df23bc32:9a8e48fe59ebed092c55448cc5e1b47722a1a488b355958ad2209acb4c3650719626543286f0f07622b2628909684a1fc30dfd0526b8f7092235baa4784602cb",
+      "xp": 0,
+      "units": {
+        "rose": {},
+        "circulatory": {},
+        "cell": {},
+        "respiratory": {},
+        "digestive": {}
+      },
+      "createdAt": "2026-11-25T11:52:46.532Z"
+    }
+  ],
+  "leaderboard": []
+}

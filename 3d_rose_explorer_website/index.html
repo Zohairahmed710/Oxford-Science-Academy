@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oxford Science Academy — 3D &amp; Textbook Learning Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: 'Inter', sans-serif;
+      margin: 0; padding: 0;
+      width: 100%; height: 100dvh; min-height: 100dvh;
+      overflow: hidden;
+      background-color: #f4f6f9;
+      color: #1e293b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    h1, h2, h3, .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.28); border-radius: 9999px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.48); }
+
+    @keyframes dotPulse { 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1);opacity:1} }
+    .typing-dot { animation: dotPulse 1.3s infinite ease-in-out both; }
+    .typing-dot:nth-child(2){ animation-delay:.16s; }
+    .typing-dot:nth-child(3){ animation-delay:.32s; }
+
+    @keyframes fadeSlideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .msg-anim { animation: fadeSlideIn .22s ease both; }
+
+    .sketchfab-embed-wrapper { position:relative; width:100%; height:100%; flex:1 1 auto; display:flex; flex-direction:column; background:#0b2149; }
+    .sketchfab-embed-wrapper iframe { width:100%; height:100%; flex:1 1 auto; border:0; display:block; }
+
+    .quiz-option { transition: background .15s, border-color .15s, transform .1s; }
+    .quiz-option:hover { background:#eff6ff !important; border-color:#3b82f6 !important; }
+    .quiz-option.correct { background:#ecfdf5 !important; border-color:#10b981 !important; color:#065f46 !important; }
+    .quiz-option.wrong   { background:#fef2f2 !important; border-color:#ef4444 !important; color:#991b1b !important; }
+
+    @keyframes confettiFall { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(280px) rotate(540deg);opacity:0} }
+    .confetti-piece { position:fixed; top:0; width:10px; height:10px; z-index:9999; pointer-events:none; animation:confettiFall 2.1s ease-out forwards; }
+
+    @media print {
+      body * { visibility:hidden; }
+      #print-area, #print-area * { visibility:visible; }
+      #print-area { position:fixed; inset:0; padding:2rem; background:white; color:black; font-size:13pt; }
+    }
+  </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col bg-[#f4f6f9] text-slate-800 overflow-hidden">
+<div id="app-root" class="flex flex-col h-[100dvh] w-full overflow-hidden">
+
+  <!-- ═══════════════════ CLEAN MINIMAL NAVBAR ═══════════════════ -->
+  <header class="bg-[#0B2149] text-white px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 shrink-0 z-40">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-lg bg-[#14BF96] flex items-center justify-center text-[#0B2149] font-extrabold text-base shrink-0">🎓</div>
+      <div class="min-w-0">
+        <h1 class="text-sm sm:text-base font-bold tracking-tight truncate">Oxford Science Academy</h1>
+        <div class="flex items-center gap-1.5">
+          <span id="ai-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0"></span>
+          <p id="ai-status-text" class="text-[11px] text-slate-300 truncate">Connecting…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clean Nav Links -->
+    <nav class="hidden md:flex items-center gap-1">
+      <button type="button" data-view="home" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/15 text-white transition cursor-pointer">Courses</button>
+      <button type="button" data-view="lab"  class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">3D Lab</button>
+      <button type="button" data-view="book" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">Textbook</button>
+      <button type="button" data-view="mastery" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">Progress</button>
+    </nav>
+
+    <!-- Subtle XP + Role Toggle + Auth -->
+    <div class="flex items-center gap-2.5 shrink-0">
+      <span class="hidden sm:inline text-xs font-semibold text-amber-300">⚡ <span id="xp-count">0</span> XP</span>
+      <span id="nav-user-badge" class="hidden text-xs font-semibold text-emerald-300 max-w-[90px] truncate"></span>
+      <button id="btn-role-toggle" type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition cursor-pointer flex items-center gap-1.5">
+        <span id="role-icon">👩‍🏫</span><span id="role-label">Teacher</span>
+      </button>
+      <button id="btn-open-auth" type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#14BF96] hover:bg-[#10a883] text-[#0B2149] border border-transparent transition cursor-pointer">
+        Sign In
+      </button>
+      <button id="btn-logout" type="button"
+        class="hidden px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition cursor-pointer">
+        Log Out
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Bottom-ish Sub-Nav -->
+  <div class="flex md:hidden bg-white border-b border-slate-200 px-2 py-1.5 gap-1 shrink-0 z-30">
+    <button type="button" data-view="home" class="nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold bg-[#0B2149] text-white cursor-pointer">🏠 Home</button>
+    <button type="button" data-view="lab"  class="nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-slate-100 cursor-pointer">🔬 3D Lab</button>
+    <button type="button" data-view="book" class="nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-slate-100 cursor-pointer">📖 Book</button>
+    <button type="button" data-view="mastery" class="nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-slate-100 cursor-pointer">🏆 Mastery</button>
+  </div>
+
+  <!-- ═══════════════════ VIEW 1: COURSE HOME ═══════════════════ -->
+  <main id="view-home" class="flex-1 overflow-y-auto custom-scroll p-4 sm:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <!-- Hero Banner -->
+      <section class="bg-gradient-to-r from-[#0B2149] via-[#12326B] to-[#0E4D64] text-white rounded-2xl p-6 sm:p-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-3 max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-bold">
+            <span>📚 Aligned with New Oxford Secondary Science TG 6</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold leading-tight">Living Systems, Anatomy &amp; Plant Science</h2>
+          <p class="text-sm text-slate-200 leading-relaxed">
+            Explore real 3D models, study interactive flashcards, read your textbook side-by-side, and master each unit with your AI Science Buddy!
+          </p>
+          <div class="flex flex-wrap gap-3 pt-1">
+            <button type="button" id="btn-continue-learning" class="px-5 py-2.5 rounded-xl bg-[#14BF96] hover:bg-[#10a883] text-[#0B2149] font-extrabold text-sm shadow transition cursor-pointer">
+              Continue Learning →
+            </button>
+            <button type="button" onclick="switchView('book')" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition cursor-pointer">
+              📖 Open Textbook
+            </button>
+          </div>
+        </div>
+
+        <!-- Mastery Progress Ring -->
+        <div class="bg-white/10 border border-white/15 rounded-2xl p-5 flex items-center gap-4 shrink-0">
+          <div class="relative w-20 h-20">
+            <svg class="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="8"/>
+              <circle id="home-mastery-ring" cx="40" cy="40" r="34" fill="none" stroke="#14BF96" stroke-width="8" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center font-extrabold text-lg" id="home-mastery-pct">0%</div>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wider text-slate-300 font-bold">Course Mastery</div>
+            <div class="text-lg font-extrabold" id="home-units-done">0 / 5 Units</div>
+            <div class="text-xs text-amber-300 font-semibold mt-0.5">⚡ <span id="home-xp-text">0</span> XP Earned</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Units Grid -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-extrabold text-[#0B2149]">Course Units</h3>
+          <span class="text-xs font-semibold text-slate-500">Click any unit to launch the 3D Lab</span>
+        </div>
+        <div id="course-units-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ═══════════════════ VIEW 2: 3D LAB & AI TUTOR ═══════════════════ -->
+  <main id="view-lab" class="hidden flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden relative">
+
+    <!-- COLLAPSIBLE CURRICULUM DRAWER (Hidden by default for clean space!) -->
+    <aside id="lab-sidebar" class="hidden w-64 bg-white border-r border-slate-200 flex-col shrink-0 overflow-y-auto custom-scroll z-20">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+        <div class="min-w-0">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Unit</div>
+          <div id="sidebar-unit-title" class="text-xs font-extrabold text-[#0B2149] truncate mt-0.5">Rose Anatomy</div>
+        </div>
+        <button type="button" id="btn-close-sidebar" class="text-slate-400 hover:text-slate-700 text-sm px-1.5 cursor-pointer">✕</button>
+      </div>
+      <div class="p-3 space-y-1" id="sidebar-steps"></div>
+      <div class="p-3 mt-auto border-t border-slate-200">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Units</div>
+        <div id="sidebar-unit-list" class="space-y-1"></div>
+      </div>
+    </aside>
+
+    <!-- CENTER STAGE -->
+    <section class="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
+      <!-- Clean Single-Line Toolbar -->
+      <div class="px-4 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2 overflow-x-auto custom-scroll">
+          <button type="button" id="btn-toggle-sidebar" title="Course Outline" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 cursor-pointer shrink-0">☰ Units</button>
+          <select id="lab-unit-select" class="min-h-[32px] bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-xs font-bold text-[#0B2149] cursor-pointer max-w-[190px]"></select>
+          <div class="h-4 w-px bg-slate-200 mx-1 shrink-0"></div>
+          <button type="button" data-stage="model" class="stage-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1865F2] text-white cursor-pointer shrink-0">3D Model</button>
+          <button type="button" data-stage="concepts" class="stage-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer shrink-0">Concepts</button>
+          <button type="button" data-stage="flashcards" class="stage-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer shrink-0">Flashcards</button>
+          <button type="button" data-stage="quiz" class="stage-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer shrink-0">Quiz</button>
+        </div>
+        <button id="btn-open-related-chapter" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-700 hover:bg-sky-50 cursor-pointer shrink-0">📖 Book Chapter</button>
+      </div>
+
+      <!-- Stage: 3D Model -->
+      <div id="stage-model" class="flex-1 flex flex-col min-h-0">
+        <div class="sketchfab-embed-wrapper">
+          <iframe id="sketchfab-iframe" title="3D Model" frameborder="0" allowfullscreen allow="autoplay; fullscreen; xr-spatial-tracking" src="https://sketchfab.com/models/e740eaaf387f4edd806b2d33af554500/embed"></iframe>
+        </div>
+        <div class="bg-slate-50 border-t border-slate-200 px-3 py-2 shrink-0">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Tap a Part to Ask AI Buddy</span>
+            <span id="model-attribution" class="text-[11px] text-slate-400 truncate max-w-[50%]"></span>
+          </div>
+          <div id="part-guide-chips" class="flex gap-1.5 overflow-x-auto pb-1 custom-scroll"></div>
+        </div>
+      </div>
+
+      <!-- Stage: Key Concepts + SVG Diagram -->
+      <div id="stage-concepts" class="hidden flex-1 overflow-y-auto custom-scroll p-5 sm:p-8 bg-[#f8fafc]">
+        <div id="concepts-content" class="max-w-3xl mx-auto space-y-6"></div>
+      </div>
+
+      <!-- Stage: Flashcards -->
+      <div id="stage-flashcards" class="hidden flex-1 flex flex-col items-center justify-center p-6 bg-[#f8fafc] overflow-y-auto">
+        <div class="w-full max-w-md space-y-4 text-center">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-500">
+            <span id="fc-sub">10 cards remaining</span>
+            <span class="text-emerald-600">Mastered: <span id="fc-mastered">0</span> / 10</span>
+          </div>
+          <div id="fc-card" class="w-full min-h-[230px] rounded-2xl bg-white border-2 border-[#1865F2]/30 shadow-lg p-7 flex flex-col items-center justify-center cursor-pointer select-none hover:border-[#1865F2] transition">
+            <span id="fc-side-badge" class="text-[11px] font-extrabold uppercase tracking-widest text-[#1865F2] mb-3">FRONT • TAP TO FLIP</span>
+            <div id="fc-text" class="text-2xl font-extrabold text-[#0B2149]">Anther</div>
+            <p id="fc-hint" class="text-xs text-slate-400 mt-3">Click card to reveal explanation</p>
+          </div>
+          <div class="flex items-center justify-center gap-3">
+            <button id="btn-fc-review" type="button" class="px-5 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs cursor-pointer">🔁 Study Again</button>
+            <button id="btn-fc-gotit"  type="button" class="px-5 py-2.5 rounded-xl bg-[#14BF96] hover:bg-[#10a883] text-white font-bold text-xs shadow cursor-pointer">✅ Got It! (+10 XP)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage: Unit Quiz -->
+      <div id="stage-quiz" class="hidden flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
+        <div class="bg-slate-200 h-2 shrink-0"><div id="quiz-progress-bar" class="h-full bg-[#14BF96] transition-all duration-300" style="width:0%"></div></div>
+        <div id="quiz-body" class="flex-1 overflow-y-auto p-5 sm:p-8 custom-scroll max-w-2xl w-full mx-auto"></div>
+        <div class="px-5 py-3 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
+          <div class="text-xs font-extrabold text-[#0B2149]" id="quiz-panel-sub">Question 1</div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-emerald-700">Score: <span id="quiz-score">0</span>/<span id="quiz-total">0</span></span>
+            <button id="btn-quiz-restart" type="button" class="hidden px-4 py-2 rounded-xl text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 cursor-pointer">🔁 Restart</button>
+            <button id="btn-quiz-next"    type="button" class="hidden px-5 py-2 rounded-xl text-xs font-bold bg-[#1865F2] hover:bg-blue-700 text-white cursor-pointer">Next →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: AI SCIENCE BUDDY (Clean, Uncluttered) -->
+    <aside class="w-full lg:w-[370px] xl:w-[400px] h-[44%] lg:h-full bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col min-h-0 shrink-0">
+      <!-- Chat Header -->
+      <div class="px-4 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="buddy-avatar" class="w-8 h-8 rounded-full bg-[#0B2149] text-white flex items-center justify-center text-sm shrink-0">🌱</div>
+          <div class="min-w-0">
+            <h2 id="buddy-title" class="text-sm font-bold text-[#0B2149] truncate">Science Buddy</h2>
+            <p id="chat-mode-label" class="text-[11px] text-emerald-600 truncate">Ready to help</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 relative">
+          <!-- Teacher Tools Dropdown (replaces noisy bar!) -->
+          <div id="teacher-studio-bar" class="relative">
+            <button type="button" id="btn-teacher-dropdown" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer">👩‍🏫 Quiz Tools ▾</button>
+            <div id="teacher-dropdown-menu" class="hidden absolute right-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+              <button type="button" class="teacher-action w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer" data-action="gen10">📋 Generate 10 Questions</button>
+              <button type="button" class="teacher-action w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer" data-action="gen5">📋 Generate 5 Questions</button>
+              <button type="button" class="teacher-action w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer" data-action="genMCQ">🗂️ Generate MCQ Sheet</button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button type="button" class="teacher-action w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer" data-action="printQ">🖨️ Print Worksheet</button>
+            </div>
+          </div>
+          <button id="btn-tts-toggle" type="button" title="Auto-read answers aloud" class="px-2 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 cursor-pointer">🔇</button>
+          <button id="btn-clear-chat" type="button" class="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 cursor-pointer">Clear</button>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-3 custom-scroll bg-[#f8fafc]"></div>
+
+      <!-- Book Toggle + Quick Prompts -->
+      <div class="px-3 py-2 bg-white border-t border-slate-200 flex items-center gap-1.5 overflow-x-auto custom-scroll shrink-0">
+        <button type="button" id="btn-use-book-toggle" class="shrink-0 px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-[11px] font-bold cursor-pointer">📖 Book: ON</button>
+        <div id="quick-prompts-bar" class="flex gap-1.5 shrink-0"></div>
+      </div>
+
+      <!-- Chat Input -->
+      <form id="chat-form" class="p-2.5 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
+        <button id="btn-mic" type="button" title="Speak question" class="min-h-[40px] min-w-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center cursor-pointer shrink-0">🎙️</button>
+        <input id="chat-input" type="text" placeholder="Ask anything or say 'give me 10 questions'…" autocomplete="off"
+          class="flex-1 min-h-[40px] bg-slate-100 focus:bg-white text-slate-800 placeholder-slate-400 text-xs sm:text-sm rounded-xl px-3.5 border border-slate-200 focus:border-[#1865F2] focus:outline-none transition" />
+        <button type="submit" class="min-h-[40px] px-4 rounded-xl bg-[#1865F2] hover:bg-blue-700 text-white font-bold text-xs shadow-sm cursor-pointer shrink-0">Send</button>
+      </form>
+    </aside>
+  </main>
+
+  <!-- ═══════════════════ VIEW 3: TEXTBOOK READER ═══════════════════ -->
+  <main id="view-book" class="hidden flex-1 flex flex-col min-h-0 bg-slate-100">
+    <!-- Toolbar -->
+    <div class="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="text-lg">📖</span>
+        <div class="min-w-0">
+          <div id="book-title-label" class="text-xs sm:text-sm font-extrabold text-[#0B2149] truncate">New Oxford Secondary Science TG 6</div>
+          <div id="book-index-status" class="text-[11px] text-sky-600 font-semibold truncate">Loading book…</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <select id="book-chapter-select" class="min-h-[34px] max-w-[210px] bg-slate-50 border border-slate-300 rounded-lg px-2.5 text-xs font-bold text-[#0B2149] cursor-pointer">
+          <option value="">📑 Jump to Chapter…</option>
+        </select>
+        <button type="button" id="btn-book-prev" class="min-h-[34px] px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer">◀ Prev</button>
+        <span id="book-page-indicator" class="text-xs font-extrabold text-[#0B2149] px-1">1 / 1</span>
+        <button type="button" id="btn-book-next" class="min-h-[34px] px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer">Next ▶</button>
+        <button type="button" id="btn-ask-this-page" class="min-h-[34px] px-3 rounded-lg bg-[#1865F2] hover:bg-blue-700 text-white text-xs font-bold cursor-pointer">✨ Ask AI This Page</button>
+        <label class="min-h-[34px] px-3 rounded-lg bg-[#0B2149] hover:bg-slate-800 text-white text-xs font-bold cursor-pointer flex items-center gap-1">
+          <span>📂 Upload PDF</span>
+          <input type="file" id="book-file-input" accept=".pdf" class="hidden" />
+        </label>
+      </div>
+    </div>
+
+    <!-- Search + Page Range Bar -->
+    <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <form id="book-search-form" class="flex items-center gap-1.5 flex-1 max-w-md">
+        <input id="book-search-input" type="text" placeholder="Search textbook (e.g. circulatory, heart, cell, lungs)…"
+          class="flex-1 min-h-[34px] bg-white border border-slate-300 rounded-lg px-3 text-xs focus:border-[#1865F2] focus:outline-none" />
+        <button type="submit" class="min-h-[34px] px-3 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer">Find</button>
+        <span id="book-search-result" class="text-[11px] font-semibold text-slate-500"></span>
+      </form>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-bold text-slate-600">Pages:</span>
+        <input id="range-from" type="number" min="1" value="1" class="w-14 min-h-[32px] bg-white border border-slate-300 rounded-lg text-center text-xs font-bold" />
+        <span class="text-xs text-slate-500">to</span>
+        <input id="range-to" type="number" min="1" value="5" class="w-14 min-h-[32px] bg-white border border-slate-300 rounded-lg text-center text-xs font-bold" />
+        <button type="button" id="btn-range-questions" class="min-h-[32px] px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold cursor-pointer">📋 10 Questions</button>
+        <button type="button" id="btn-range-quiz" class="min-h-[32px] px-3 rounded-lg bg-[#14BF96] hover:bg-[#10a883] text-white text-xs font-bold cursor-pointer">🎯 Live Quiz</button>
+      </div>
+    </div>
+
+    <!-- Page Links Bar (shown when current page has links) -->
+    <div id="book-page-links-bar" class="hidden px-4 py-1.5 bg-sky-50 border-b border-sky-200 flex items-center gap-2 overflow-x-auto custom-scroll shrink-0"></div>
+
+    <!-- PDF Canvas + Clickable Link Layer -->
+    <div id="book-canvas-wrap" class="flex-1 overflow-auto p-4 flex justify-center items-start custom-scroll bg-slate-200/70">
+      <div id="pdf-page-wrapper" class="relative inline-block shadow-xl rounded-lg overflow-hidden bg-white">
+        <canvas id="pdf-canvas" class="block max-w-full h-auto bg-white"></canvas>
+        <div id="pdf-link-layer" class="absolute inset-0 pointer-events-none"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════ VIEW 4: MASTERY & BADGES ═══════════════════ -->
+  <main id="view-mastery" class="hidden flex-1 overflow-y-auto custom-scroll p-4 sm:p-8">
+    <div class="max-w-5xl mx-auto space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h2 class="text-xl font-extrabold text-[#0B2149] mb-1">🏆 Mastery, Badges &amp; Classroom Leaderboard</h2>
+        <p class="text-sm text-slate-500 mb-5">Complete Key Concepts, 3D Exploration, Flashcards, and Unit Quizzes to earn XP and unlock badges.</p>
+        <div id="badges-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h3 class="text-base font-extrabold text-[#0B2149] mb-3">📊 Unit Mastery Breakdown</h3>
+        <div id="mastery-breakdown" class="space-y-3"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h3 class="text-base font-extrabold text-[#0B2149] mb-3">🎓 Classroom Top Scores</h3>
+        <div id="mastery-leaderboard" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+  </main>
+
+</div>
+<div id="print-area" class="hidden"></div>
+
+<!-- ═══════════════════ AUTH MODAL ═══════════════════ -->
+<div id="auth-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 relative">
+    <button id="btn-auth-close" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl cursor-pointer">✕</button>
+    <!-- Tabs -->
+    <div class="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
+      <button type="button" id="tab-signin" class="flex-1 py-2 rounded-lg text-xs font-bold bg-white text-[#0B2149] shadow cursor-pointer transition">Sign In</button>
+      <button type="button" id="tab-signup" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer transition">Sign Up</button>
+    </div>
+    <!-- Sign In Form -->
+    <form id="form-signin" class="space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Username</label>
+        <input id="si-username" type="text" autocomplete="username" placeholder="your_username"
+          class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm focus:border-[#1865F2] focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Password</label>
+        <input id="si-password" type="password" autocomplete="current-password" placeholder="••••••••"
+          class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm focus:border-[#1865F2] focus:outline-none" />
+      </div>
+      <div id="si-error" class="hidden text-xs text-red-600 font-semibold bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+      <button type="submit" class="w-full py-2.5 rounded-xl bg-[#1865F2] hover:bg-blue-700 text-white font-bold text-sm shadow cursor-pointer transition">Sign In</button>
+    </form>
+    <!-- Sign Up Form -->
+    <form id="form-signup" class="hidden space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Full Name</label>
+        <input id="su-name" type="text" placeholder="Jane Smith"
+          class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm focus:border-[#1865F2] focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Username</label>
+        <input id="su-username" type="text" autocomplete="username" placeholder="jane_smith"
+          class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm focus:border-[#1865F2] focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Password</label>
+        <input id="su-password" type="password" autocomplete="new-password" placeholder="At least 8 characters"
+          class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm focus:border-[#1865F2] focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Role</label>
+        <select id="su-role" class="w-full min-h-[38px] border border-slate-300 rounded-xl px-3 text-sm bg-white focus:outline-none">
+          <option value="student">🎒 Student</option>
+          <option value="teacher">👩‍🏫 Teacher</option>
+        </select>
+      </div>
+      <div id="su-error" class="hidden text-xs text-red-600 font-semibold bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+      <button type="submit" class="w-full py-2.5 rounded-xl bg-[#14BF96] hover:bg-[#10a883] text-[#0B2149] font-bold text-sm shadow cursor-pointer transition">Create Account</button>
+    </form>
+    <!-- Guest mode note -->
+    <p class="text-center text-[11px] text-slate-400 mt-4">
+      <button type="button" id="btn-guest" class="underline text-slate-500 hover:text-slate-700 cursor-pointer">Continue as Guest</button> (scores stay on this device only)
+    </p>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   1. CURRICULUM UNITS DATA (5 COMPLETE 3D + TEXTBOOK UNITS)
+   ================================================================ */
+const MODELS = {
+  rose: {
+    id:'rose', emoji:'🌹', color:'#e11d48', unitNum:'Unit 1',
+    bookKeywords:'flower petal anther stigma reproduction plant',
+    appTitle:'Plant Reproduction & Rose Anatomy', buddyTitle:'Rose Science Buddy', buddyAvatar:'🌹',
+    summary:'Explore the male (stamens) and female (carpel) parts of a flower and how pollinators help create new seeds.',
+    embedUrl:'https://sketchfab.com/models/e740eaaf387f4edd806b2d33af554500/embed',
+    attributionHtml:`<a href="https://sketchfab.com/3d-models/anatomy-of-a-miniature-rose-photogrammetry-e740eaaf387f4edd806b2d33af554500" target="_blank" class="text-sky-600 hover:underline font-semibold">Miniature Rose</a> by Raiz`,
+    parts:[
+      {num:1,name:'Anther'},{num:2,name:'Filament'},{num:3,name:'Stamens'},{num:4,name:'Stigma'},{num:5,name:'Ovary'},
+      {num:6,name:'Carpel'},{num:7,name:'Nectary'},{num:8,name:'Petal'},{num:9,name:'Sepals'},{num:10,name:'Stem'}
+    ],
+    quickPrompts:[
+      {text:'What is the Anther?'},{text:'How do bees pollinate?'},{text:'Carpel vs Stamens?'},{text:'Give me 10 questions!'}
+    ],
+    welcomeHtml:`Welcome to <strong>Unit 1: Plant Reproduction &amp; Rose Anatomy</strong>! 🌹<br>Spin the 3D rose, tap any numbered part below, or ask me for explanations and student questions!`,
+    systemPrompt:`You are "Rose Science Buddy", a friendly science tutor for Grade 5–6 alongside a 3D miniature rose model. Keep answers clear (3–5 sentences) unless asked for a 10-question quiz. Parts: 1. Anther, 2. Filament, 3. Stamens (male), 4. Stigma, 5. Ovary, 6. Carpel (female), 7. Nectary, 8. Petal, 9. Sepals, 10. Stem.`,
+    conceptSvg:`<svg viewBox="0 0 420 200" class="w-full max-w-md mx-auto"><rect width="420" height="200" rx="14" fill="#fff1f2"/><path d="M210 185 V110" stroke="#15803d" stroke-width="6" stroke-linecap="round"/><ellipse cx="170" cy="95" rx="38" ry="26" fill="#fb7185"/><ellipse cx="250" cy="95" rx="38" ry="26" fill="#fb7185"/><ellipse cx="210" cy="75" rx="32" ry="38" fill="#f43f5e"/><path d="M180 120 Q210 135 240 120" stroke="#16a34a" stroke-width="6" fill="none"/><circle cx="210" cy="95" r="10" fill="#fde047"/><line x1="190" y1="90" x2="182" y2="62" stroke="#ca8a04" stroke-width="2.5"/><circle cx="182" cy="60" r="4" fill="#eab308"/><line x1="230" y1="90" x2="238" y2="62" stroke="#ca8a04" stroke-width="2.5"/><circle cx="238" cy="60" r="4" fill="#eab308"/><text x="18" y="36" font-size="12" font-weight="bold" fill="#881337">Petals (#8): Attract bees</text><text x="270" y="55" font-size="12" font-weight="bold" fill="#854d0e">Anther (#1): Pollen</text><text x="270" y="130" font-size="12" font-weight="bold" fill="#166534">Sepals (#9): Protect bud</text><text x="18" y="170" font-size="12" font-weight="bold" fill="#14532d">Stem (#10): Water highway</text></svg>`,
+    concepts:[
+      {title:'Male vs Female Parts', body:'Stamens (#3) are the male parts (Anther + Filament) that make pollen. The Carpel (#6) is the female center (Stigma + Style + Ovary) that receives pollen and grows seeds.'},
+      {title:'Pollination & Nectar', body:'Bright Petals (#8) and sweet Nectary (#7) attract bees and butterflies, which carry pollen from Anther (#1) to sticky Stigma (#4).'}
+    ],
+    quizQuestions:[
+      {q:'Which part of the rose makes yellow pollen?',options:['#4 Stigma','#1 Anther','#7 Nectary','#9 Sepals'],correct:1,explanation:'The **Anther (#1)** produces dusty yellow pollen.'},
+      {q:'What sticky pad in the center catches pollen?',options:['#2 Filament','#8 Petal','#4 Stigma','#5 Ovary'],correct:2,explanation:'The **Stigma (#4)** catches pollen grains.'},
+      {q:'Which part carries water up from the roots?',options:['#9 Sepals','#6 Carpel','#3 Stamens','#10 Stem'],correct:3,explanation:'The **Stem (#10)** has xylem tubes for water.'},
+      {q:'What protects the flower when it is a closed bud?',options:['#8 Petals','#9 Sepals','#7 Nectary','#1 Anther'],correct:1,explanation:'**Sepals (#9)** wrap tightly around the closed bud.'},
+      {q:'Which part makes sweet nectar for pollinators?',options:['#5 Ovary','#3 Stamens','#7 Nectary','#4 Stigma'],correct:2,explanation:'The **Nectary (#7)** produces sweet nectar.'}
+    ]
+  },
+
+  circulatory: {
+    id:'circulatory', emoji:'❤️', color:'#dc2626', unitNum:'Unit 2',
+    bookKeywords:'circulatory heart blood arteries veins',
+    appTitle:'Human Circulatory System', buddyTitle:'Heart & Blood Buddy', buddyAvatar:'❤️',
+    summary:'Discover how the heart pumps oxygen-rich blood through arteries and returns used blood through veins.',
+    embedUrl:'https://sketchfab.com/models/6a7a537a71444f6e8201e18a685a013d/embed',
+    attributionHtml:`<a href="https://sketchfab.com/3d-models/animated-human-body-with-circulatory-system-6a7a537a71444f6e8201e18a685a013d" target="_blank" class="text-sky-600 hover:underline font-semibold">Circulatory System</a> by AVRcontent`,
+    parts:[
+      {num:1,name:'Heart'},{num:2,name:'Arteries'},{num:3,name:'Veins'},{num:4,name:'Capillaries'},{num:5,name:'Aorta'},
+      {num:6,name:'Red Blood Cells'},{num:7,name:'White Blood Cells'},{num:8,name:'Platelets'},{num:9,name:'Lungs Circuit'},{num:10,name:'Plasma'}
+    ],
+    quickPrompts:[
+      {text:'How does the Heart pump blood?'},{text:'Arteries vs Veins?'},{text:'What do Red Blood Cells do?'},{text:'Give me 10 questions!'}
+    ],
+    welcomeHtml:`Welcome to <strong>Unit 2: Human Circulatory System</strong>! ❤️<br>Explore the animated 3D blood vessels and heart, or ask me how oxygen travels through the body!`,
+    systemPrompt:`You are "Heart & Blood Buddy", a friendly science tutor for Grade 5–6 alongside a 3D Circulatory System model. Parts: 1. Heart, 2. Arteries (away), 3. Veins (back), 4. Capillaries, 5. Aorta, 6. Red Blood Cells, 7. White Blood Cells, 8. Platelets, 9. Lungs Circuit, 10. Plasma.`,
+    conceptSvg:`<svg viewBox="0 0 420 200" class="w-full max-w-md mx-auto"><rect width="420" height="200" rx="14" fill="#fef2f2"/><rect x="165" y="70" width="90" height="65" rx="18" fill="#ef4444"/><text x="210" y="108" text-anchor="middle" font-size="14" font-weight="bold" fill="white">❤️ Heart</text><path d="M255 95 H355" stroke="#dc2626" stroke-width="6" stroke-linecap="round"/><path d="M165 110 H65" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/><text x="310" y="82" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">Arteries (#2) → Away</text><text x="105" y="96" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">← Veins (#3) Back</text><text x="210" y="170" text-anchor="middle" font-size="12" font-weight="bold" fill="#7f1d1d">Capillaries (#4) swap O₂ &amp; nutrients in cells</text></svg>`,
+    concepts:[
+      {title:'The Double Pump', body:'Your Heart (#1) beats ~100,000 times a day. The right side sends blood to the Lungs (#9) for oxygen; the left side pumps it through the Aorta (#5) to your whole body.'},
+      {title:'Blood Components', body:'Red Blood Cells (#6) carry oxygen, White Blood Cells (#7) fight germs, Platelets (#8) clot cuts, and Plasma (#10) is the liquid river.'}
+    ],
+    quizQuestions:[
+      {q:'Which organ pumps blood through your body?',options:['#9 Lungs','#1 Heart','#5 Aorta','#3 Veins'],correct:1,explanation:'The **Heart (#1)** is a muscular pump.'},
+      {q:'Which vessels carry blood AWAY from the heart?',options:['#3 Veins','#4 Capillaries','#2 Arteries','#10 Plasma'],correct:2,explanation:'**A**rteries carry blood **A**way from the heart.'},
+      {q:'Where does oxygen pass into body cells?',options:['#5 Aorta','#4 Capillaries','#1 Heart','#8 Platelets'],correct:1,explanation:'**Capillaries (#4)** are one cell thick for gas exchange.'},
+      {q:'Which blood cells fight off germs?',options:['#6 Red Blood Cells','#7 White Blood Cells','#8 Platelets','#10 Plasma'],correct:1,explanation:'**White Blood Cells (#7)** defend against infections.'},
+      {q:'What forms clots and scabs when you get a cut?',options:['#8 Platelets','#10 Plasma','#6 Red Blood Cells','#2 Arteries'],correct:0,explanation:'**Platelets (#8)** seal cuts to stop bleeding.'}
+    ]
+  },
+
+  cell: {
+    id:'cell', emoji:'🧬', color:'#16a34a', unitNum:'Unit 3',
+    bookKeywords:'cell plant cell nucleus chloroplast cell wall vacuole',
+    appTitle:'Cellular Organization (Plant Cell)', buddyTitle:'Cell Biology Buddy', buddyAvatar:'🧬',
+    summary:'Zoom inside a eukaryotic plant cell to examine the nucleus, chloroplasts, mitochondria, vacuole, and cell wall.',
+    embedUrl:'https://sketchfab.com/models/f258c65762e5435c9d58c1aa136b557a/embed',
+    attributionHtml:`<a href="https://sketchfab.com/3d-models/eukaryotic-plant-cell-f258c65762e5435c9d58c1aa136b557a" target="_blank" class="text-sky-600 hover:underline font-semibold">Plant Cell</a> by jlf_illustration`,
+    parts:[
+      {num:1,name:'Cell Wall'},{num:2,name:'Cell Membrane'},{num:3,name:'Nucleus'},{num:4,name:'Chloroplast'},{num:5,name:'Mitochondria'},
+      {num:6,name:'Vacuole'},{num:7,name:'Cytoplasm'},{num:8,name:'Ribosomes'},{num:9,name:'Golgi Body'},{num:10,name:'ER Network'}
+    ],
+    quickPrompts:[
+      {text:'What does the Nucleus do?'},{text:'Plant vs Animal Cell?'},{text:'How do Chloroplasts make food?'},{text:'Give me 10 questions!'}
+    ],
+    welcomeHtml:`Welcome to <strong>Unit 3: Plant Cell Biology</strong>! 🧬<br>Inspect the 3D organelles and ask me how each part keeps the plant alive!`,
+    systemPrompt:`You are "Cell Biology Buddy", a Grade 5–6 science tutor alongside a 3D Eukaryotic Plant Cell model. Parts: 1. Cell Wall, 2. Cell Membrane, 3. Nucleus, 4. Chloroplast, 5. Mitochondria, 6. Vacuole, 7. Cytoplasm, 8. Ribosomes, 9. Golgi Body, 10. ER.`,
+    conceptSvg:`<svg viewBox="0 0 420 200" class="w-full max-w-md mx-auto"><rect width="420" height="200" rx="14" fill="#f0fdf4"/><rect x="85" y="25" width="250" height="150" rx="22" fill="#bbf7d0" stroke="#15803d" stroke-width="8"/><circle cx="155" cy="95" r="28" fill="#7c3aed"/><text x="155" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Nucleus</text><ellipse cx="255" cy="70" rx="34" ry="20" fill="#22c55e"/><text x="255" y="74" text-anchor="middle" font-size="10" font-weight="bold" fill="white">Chloroplast</text><rect x="215" y="105" width="85" height="45" rx="14" fill="#38bdf8"/><text x="257" y="132" text-anchor="middle" font-size="11" font-weight="bold" fill="#0c4a6e">Vacuole (#6)</text></svg>`,
+    concepts:[
+      {title:'Plant vs Animal Cells', body:'Plant cells have a rigid Cell Wall (#1), green Chloroplasts (#4) for photosynthesis, and one huge central Vacuole (#6) — animal cells do not!'},
+      {title:'Control & Power', body:'The Nucleus (#3) holds DNA and directs the cell, while Mitochondria (#5) release energy from sugar.'}
+    ],
+    quizQuestions:[
+      {q:'Which rigid outer box supports a plant cell?',options:['#2 Cell Membrane','#1 Cell Wall','#7 Cytoplasm','#8 Ribosomes'],correct:1,explanation:'The **Cell Wall (#1)** gives plant cells a sturdy shape.'},
+      {q:'Which organelle is the DNA control center?',options:['#6 Vacuole','#5 Mitochondria','#3 Nucleus','#4 Chloroplast'],correct:2,explanation:'The **Nucleus (#3)** controls cell activities.'},
+      {q:'Which green organelle makes sugar from sunlight?',options:['#4 Chloroplast','#5 Mitochondria','#9 Golgi Body','#6 Vacuole'],correct:0,explanation:'**Chloroplasts (#4)** carry out photosynthesis.'},
+      {q:'Which organelle is the powerhouse of the cell?',options:['#3 Nucleus','#8 Ribosomes','#5 Mitochondria','#1 Cell Wall'],correct:2,explanation:'**Mitochondria (#5)** release energy from food.'},
+      {q:'What huge sac stores water inside a plant cell?',options:['#6 Vacuole','#7 Cytoplasm','#10 ER','#2 Cell Membrane'],correct:0,explanation:'The central **Vacuole (#6)** keeps plants firm.'}
+    ]
+  },
+
+  respiratory: {
+    id:'respiratory', emoji:'🫁', color:'#0284c7', unitNum:'Unit 4',
+    bookKeywords:'respiratory lungs breathing trachea alveoli diaphragm',
+    appTitle:'Human Respiratory System', buddyTitle:'Breathing & Lungs Buddy', buddyAvatar:'🫁',
+    summary:'Trace how air travels down the trachea into alveoli air sacs and how the diaphragm drives breathing.',
+    embedUrl:'https://sketchfab.com/models/250911151757489da1cf5501b791f363/embed',
+    attributionHtml:`<a href="https://sketchfab.com/3d-models/human-respiratory-system-review-250911151757489da1cf5501b791f363" target="_blank" class="text-sky-600 hover:underline font-semibold">Respiratory System</a> by shinjou`,
+    parts:[
+      {num:1,name:'Nasal Cavity'},{num:2,name:'Pharynx'},{num:3,name:'Larynx'},{num:4,name:'Trachea'},{num:5,name:'Bronchi'},
+      {num:6,name:'Bronchioles'},{num:7,name:'Lungs'},{num:8,name:'Alveoli'},{num:9,name:'Diaphragm'},{num:10,name:'Rib Cage'}
+    ],
+    quickPrompts:[
+      {text:'How do Alveoli swap gases?'},{text:'What does the Diaphragm do?'},{text:'Path of air to Lungs?'},{text:'Give me 10 questions!'}
+    ],
+    welcomeHtml:`Welcome to <strong>Unit 4: Human Respiratory System</strong>! 🫁<br>Spin the 3D lungs and windpipe, or ask me how oxygen enters your bloodstream!`,
+    systemPrompt:`You are "Breathing & Lungs Buddy", a Grade 5–6 science tutor alongside a 3D Respiratory System model. Parts: 1. Nasal Cavity, 2. Pharynx, 3. Larynx, 4. Trachea, 5. Bronchi, 6. Bronchioles, 7. Lungs, 8. Alveoli, 9. Diaphragm, 10. Rib Cage.`,
+    conceptSvg:`<svg viewBox="0 0 420 200" class="w-full max-w-md mx-auto"><rect width="420" height="200" rx="14" fill="#f0f9ff"/><rect x="198" y="20" width="24" height="55" rx="6" fill="#38bdf8"/><ellipse cx="155" cy="115" rx="45" ry="52" fill="#fb7185"/><ellipse cx="265" cy="115" rx="45" ry="52" fill="#fb7185"/><path d="M120 178 Q210 155 300 178" stroke="#0369a1" stroke-width="6" fill="none"/><text x="240" y="45" font-size="11" font-weight="bold" fill="#0369a1">Trachea (#4)</text><text x="210" y="192" text-anchor="middle" font-size="11" font-weight="bold" fill="#0c4a6e">Diaphragm (#9) pulls down to inhale</text></svg>`,
+    concepts:[
+      {title:'Path of Air', body:'Air enters the Nasal Cavity (#1), passes the Pharynx (#2) and Larynx (#3), travels down the Trachea (#4) and Bronchi (#5) into Alveoli (#8).'},
+      {title:'Gas Exchange', body:'In the Alveoli (#8), oxygen moves into blood while waste carbon dioxide moves out to be exhaled.'}
+    ],
+    quizQuestions:[
+      {q:'What is another name for the windpipe?',options:['#2 Pharynx','#4 Trachea','#9 Diaphragm','#3 Larynx'],correct:1,explanation:'The **Trachea (#4)** carries air to the lungs.'},
+      {q:'Which tiny air sacs swap oxygen into blood?',options:['#8 Alveoli','#5 Bronchi','#3 Larynx','#10 Rib Cage'],correct:0,explanation:'**Alveoli (#8)** are where gas exchange happens.'},
+      {q:'Which dome muscle pulls down when you inhale?',options:['#4 Trachea','#7 Lungs','#9 Diaphragm','#2 Pharynx'],correct:2,explanation:'The **Diaphragm (#9)** flattens to draw air in.'},
+      {q:'Which organ is known as the voice box?',options:['#3 Larynx','#1 Nasal Cavity','#6 Bronchioles','#5 Bronchi'],correct:0,explanation:'The **Larynx (#3)** holds your vocal cords.'},
+      {q:'What bony cage protects your lungs?',options:['#4 Trachea','#10 Rib Cage','#9 Diaphragm','#8 Alveoli'],correct:1,explanation:'The **Rib Cage (#10)** shields lungs and heart.'}
+    ]
+  },
+
+  digestive: {
+    id:'digestive', emoji:'🍽️', color:'#d97706', unitNum:'Unit 5',
+    bookKeywords:'digestive digestion stomach intestine esophagus liver',
+    appTitle:'Human Digestive System', buddyTitle:'Digestion Buddy', buddyAvatar:'🍽️',
+    summary:'Follow food from mouth and esophagus through stomach acid and intestines where nutrients enter the blood.',
+    embedUrl:'https://sketchfab.com/models/51ebbf617d4f4faeb099d70336e13a58/embed',
+    attributionHtml:`<a href="https://sketchfab.com/3d-models/animated-human-body-anatomy-51ebbf617d4f4faeb099d70336e13a58" target="_blank" class="text-sky-600 hover:underline font-semibold">Human Anatomy</a> by AVRcontent`,
+    parts:[
+      {num:1,name:'Mouth'},{num:2,name:'Salivary Glands'},{num:3,name:'Esophagus'},{num:4,name:'Stomach'},{num:5,name:'Liver'},
+      {num:6,name:'Gallbladder'},{num:7,name:'Pancreas'},{num:8,name:'Small Intestine'},{num:9,name:'Large Intestine'},{num:10,name:'Rectum'}
+    ],
+    quickPrompts:[
+      {text:'How does the Stomach digest food?'},{text:'Small vs Large Intestine?'},{text:'What does the Liver do?'},{text:'Give me 10 questions!'}
+    ],
+    welcomeHtml:`Welcome to <strong>Unit 5: Human Digestive System</strong>! 🍽️<br>Inspect the 3D organs and ask me how your body turns food into energy!`,
+    systemPrompt:`You are "Digestion Buddy", a Grade 5–6 science tutor alongside a 3D Human Body model. Parts: 1. Mouth, 2. Salivary Glands, 3. Esophagus, 4. Stomach, 5. Liver, 6. Gallbladder, 7. Pancreas, 8. Small Intestine, 9. Large Intestine, 10. Rectum.`,
+    conceptSvg:`<svg viewBox="0 0 420 200" class="w-full max-w-md mx-auto"><rect width="420" height="200" rx="14" fill="#fffbeb"/><rect x="195" y="20" width="30" height="45" rx="8" fill="#f59e0b"/><ellipse cx="220" cy="95" rx="48" ry="30" fill="#ea580c"/><rect x="155" y="135" width="110" height="40" rx="12" fill="#f97316"/><text x="235" y="45" font-size="11" font-weight="bold" fill="#92400e">Esophagus (#3)</text><text x="220" y="100" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Stomach (#4)</text><text x="210" y="160" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Intestines (#8 &amp; #9)</text></svg>`,
+    concepts:[
+      {title:'Breaking Food Down', body:'Chewing in the Mouth (#1) and Saliva (#2) start digestion. The Esophagus (#3) pushes food to the Stomach (#4), where acid and enzymes churn it.'},
+      {title:'Absorbing Nutrients', body:'The Small Intestine (#8) absorbs nutrients into the blood, while the Large Intestine (#9) absorbs water.'}
+    ],
+    quizQuestions:[
+      {q:'Which muscular tube pushes food to your stomach?',options:['#8 Small Intestine','#3 Esophagus','#4 Stomach','#5 Liver'],correct:1,explanation:'The **Esophagus (#3)** uses peristalsis waves.'},
+      {q:'Which organ uses strong acid to churn food?',options:['#4 Stomach','#9 Large Intestine','#5 Liver','#7 Pancreas'],correct:0,explanation:'The **Stomach (#4)** mixes food with gastric acid.'},
+      {q:'Where are MOST nutrients absorbed into blood?',options:['#4 Stomach','#9 Large Intestine','#8 Small Intestine','#3 Esophagus'],correct:2,explanation:'The **Small Intestine (#8)** absorbs nutrients via villi.'},
+      {q:'What does the Large Intestine (#9) absorb?',options:['Saliva','Water','Blood','Acid'],correct:1,explanation:'The **Large Intestine (#9)** absorbs remaining water.'},
+      {q:'Which organ makes bile to break down fats?',options:['#5 Liver','#4 Stomach','#1 Mouth','#3 Esophagus'],correct:0,explanation:'The **Liver (#5)** produces bile.'}
+    ]
+  }
+};
+
+let currentModelKey = 'rose';
+let currentView = 'home';
+let currentStage = 'model';
+let isTeacherMode = true;
+function M() { return MODELS[currentModelKey]; }
+
+/* ================================================================
+   2. MASTERY, XP & BADGES STATE (localStorage + backend)
+   ================================================================ */
+window.currentUser = null; // set after login
+
+let progress = JSON.parse(localStorage.getItem('osa_progress_v1') || 'null') || {
+  xp: 0,
+  units: { rose:{}, circulatory:{}, cell:{}, respiratory:{}, digestive:{} }
+};
+function saveProgress() {
+  localStorage.setItem('osa_progress_v1', JSON.stringify(progress));
+  if (window.currentUser) {
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ xp: progress.xp, units: progress.units })
+    }).catch(() => {});
+  }
+}
+
+function markStepDone(unitId, step, xpGain = 15) {
+  if (!progress.units[unitId]) progress.units[unitId] = {};
+  if (!progress.units[unitId][step]) {
+    progress.units[unitId][step] = true;
+    progress.xp += xpGain;
+    saveProgress();
+    renderProgressUI();
+  }
+}
+
+function getUnitMasteryPct(unitId) {
+  const u = progress.units[unitId] || {};
+  const done = ['concepts','model','flashcards','quiz'].filter(s => u[s]).length;
+  return Math.round((done / 4) * 100);
+}
+
+function getUnitBadgeText(pct) {
+  if (pct === 100) return { label:'Mastered', cls:'bg-emerald-100 text-emerald-800' };
+  if (pct >= 50)   return { label:'Proficient', cls:'bg-blue-100 text-blue-800' };
+  if (pct > 0)     return { label:'Familiar', cls:'bg-amber-100 text-amber-800' };
+  return { label:'Not Started', cls:'bg-slate-100 text-slate-600' };
+}
+
+function renderProgressUI() {
+  document.getElementById('xp-count').textContent = progress.xp;
+  document.getElementById('home-xp-text').textContent = progress.xp;
+  const unitKeys = Object.keys(MODELS);
+  const totalPct = Math.round(unitKeys.reduce((acc, k) => acc + getUnitMasteryPct(k), 0) / unitKeys.length);
+  const masteredCount = unitKeys.filter(k => getUnitMasteryPct(k) === 100).length;
+  document.getElementById('home-mastery-pct').textContent = totalPct + '%';
+  document.getElementById('home-units-done').textContent = `${masteredCount} / ${unitKeys.length} Units`;
+  const offset = 213.6 - (213.6 * totalPct / 100);
+  document.getElementById('home-mastery-ring').style.strokeDashoffset = offset;
+
+  renderHomeCards();
+  renderSidebar();
+  renderMasteryView();
+}
+
+function renderHomeCards() {
+  const grid = document.getElementById('course-units-grid');
+  grid.innerHTML = '';
+  Object.values(MODELS).forEach(u => {
+    const pct = getUnitMasteryPct(u.id);
+    const badge = getUnitBadgeText(pct);
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-[#1865F2]/50 transition flex flex-col justify-between gap-4';
+    card.innerHTML = `
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center text-2xl bg-slate-100">${u.emoji}</div>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${badge.cls}">${badge.label} • ${pct}%</span>
+        </div>
+        <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">${u.unitNum}</div>
+        <h4 class="text-base font-extrabold text-[#0B2149] mt-0.5">${u.appTitle}</h4>
+        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">${u.summary}</p>
+      </div>
+      <div>
+        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
+          <div class="h-full bg-[#14BF96] rounded-full transition-all" style="width:${pct}%"></div>
+        </div>
+        <button type="button" class="w-full py-2.5 rounded-xl bg-[#0B2149] hover:bg-[#1865F2] text-white font-bold text-xs transition cursor-pointer">
+          ${pct > 0 ? 'Continue Unit →' : 'Start Unit →'}
+        </button>
+      </div>`;
+    card.querySelector('button').addEventListener('click', () => {
+      switchModel(u.id, true);
+      switchView('lab');
+    });
+    grid.appendChild(card);
+  });
+}
+
+function renderSidebar() {
+  document.getElementById('sidebar-unit-title').textContent = `${M().emoji} ${M().appTitle}`;
+  const u = progress.units[currentModelKey] || {};
+  const steps = [
+    { id:'model',      icon:'🔬', label:'1. Explore 3D Model' },
+    { id:'concepts',   icon:'📐', label:'2. Key Concepts' },
+    { id:'flashcards', icon:'🃏', label:'3. Study Flashcards' },
+    { id:'quiz',       icon:'🎯', label:'4. Mastery Quiz' },
+  ];
+  const el = document.getElementById('sidebar-steps');
+  el.innerHTML = '';
+  steps.forEach(s => {
+    const active = currentStage === s.id;
+    const done = Boolean(u[s.id]);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition ${active ? 'bg-blue-50 text-[#1865F2] border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`;
+    btn.innerHTML = `<span>${s.icon} ${s.label}</span><span>${done ? '✅' : ''}</span>`;
+    btn.addEventListener('click', () => setStage(s.id));
+    el.appendChild(btn);
+  });
+
+  const uList = document.getElementById('sidebar-unit-list');
+  const sel = document.getElementById('lab-unit-select');
+  uList.innerHTML = ''; sel.innerHTML = '';
+  Object.values(MODELS).forEach(mod => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${mod.id === currentModelKey ? 'bg-[#0B2149] text-white' : 'text-slate-600 hover:bg-slate-100'}`;
+    b.textContent = `${mod.emoji} ${mod.unitNum}: ${mod.id.charAt(0).toUpperCase() + mod.id.slice(1)}`;
+    b.addEventListener('click', () => switchModel(mod.id, true));
+    uList.appendChild(b);
+
+    const opt = document.createElement('option');
+    opt.value = mod.id;
+    opt.textContent = `${mod.emoji} ${mod.unitNum}: ${mod.appTitle}`;
+    if (mod.id === currentModelKey) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+document.getElementById('lab-unit-select').addEventListener('change', function() { switchModel(this.value, true); });
+
+function renderMasteryView() {
+  const badges = [
+    { icon:'🌱', title:'First Discovery', desc:'Explored a 3D model', unlocked: progress.xp >= 15 },
+    { icon:'🃏', title:'Card Shark',      desc:'Mastered Flashcards', unlocked: Object.values(progress.units).some(u => u.flashcards) },
+    { icon:'🎯', title:'Quiz Whiz',       desc:'Passed a Unit Quiz',  unlocked: Object.values(progress.units).some(u => u.quiz) },
+    { icon:'🏆', title:'Science Star',    desc:'Earned 150+ XP',      unlocked: progress.xp >= 150 },
+  ];
+  document.getElementById('badges-grid').innerHTML = badges.map(b => `
+    <div class="p-4 rounded-xl border text-center ${b.unlocked ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 opacity-55'}">
+      <div class="text-3xl mb-1">${b.icon}</div>
+      <div class="text-xs font-extrabold text-[#0B2149]">${b.title}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">${b.desc}</div>
+    </div>`).join('');
+
+  document.getElementById('mastery-breakdown').innerHTML = Object.values(MODELS).map(u => {
+    const pct = getUnitMasteryPct(u.id);
+    return `
+      <div>
+        <div class="flex justify-between text-xs font-bold mb-1">
+          <span>${u.emoji} ${u.appTitle}</span><span class="text-[#14BF96]">${pct}%</span>
+        </div>
+        <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full bg-[#14BF96] rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const board = JSON.parse(localStorage.getItem('science_leaderboard') || '[]');
+  const lbEl = document.getElementById('mastery-leaderboard');
+  lbEl.innerHTML = '<p class="text-xs text-slate-400">Loading leaderboard…</p>';
+  fetch('/api/leaderboard').then(r => r.json()).then(d => {
+    const rows = (d.leaderboard && d.leaderboard.length) ? d.leaderboard : board;
+    lbEl.innerHTML = rows.length
+      ? rows.map((b, i) => `<div class="flex justify-between py-1.5 border-b border-slate-100"><span><strong>${i+1}.</strong> ${b.name} ${b.emoji||b.model||''}</span><span class="font-extrabold text-emerald-600">${b.pct}%</span></div>`).join('')
+      : `<p class="text-xs text-slate-400">No quiz scores yet. Complete a Unit Quiz to appear here!</p>`;
+  }).catch(() => {
+    lbEl.innerHTML = board.length
+      ? board.map((b, i) => `<div class="flex justify-between py-1.5 border-b border-slate-100"><span><strong>${i+1}.</strong> ${b.name} ${b.model||''}</span><span class="font-extrabold text-emerald-600">${b.pct}%</span></div>`).join('')
+      : `<p class="text-xs text-slate-400">No quiz scores yet. Complete a Unit Quiz to appear here!</p>`;
+  });
+}
+
+/* ================================================================
+   3. NAVIGATION & STAGES
+   ================================================================ */
+function switchView(view) {
+  currentView = view;
+  ['home','lab','book','mastery'].forEach(v => {
+    const el = document.getElementById(`view-${v}`);
+    if (v === view) {
+      el.classList.remove('hidden');
+      if (v === 'lab' || v === 'book') el.classList.add('flex');
+    } else {
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+  });
+  document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+    const active = btn.dataset.view === view;
+    if (btn.closest('header')) {
+      btn.className = active
+        ? 'nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/15 text-white transition cursor-pointer'
+        : 'nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer';
+    } else {
+      btn.className = active
+        ? 'nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold bg-[#0B2149] text-white cursor-pointer'
+        : 'nav-tab-btn flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-slate-100 cursor-pointer';
+    }
+  });
+  if (view === 'book' && pdfDoc) renderPdfPage(currentBookPage);
+  if (view === 'lab') markStepDone(currentModelKey, 'model', 15);
+}
+
+document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+document.getElementById('btn-continue-learning').addEventListener('click', () => switchView('lab'));
+
+document.getElementById('btn-role-toggle').addEventListener('click', () => {
+  isTeacherMode = !isTeacherMode;
+  document.getElementById('role-icon').textContent = isTeacherMode ? '👩‍🏫' : '🎒';
+  document.getElementById('role-label').textContent = isTeacherMode ? 'Teacher' : 'Student';
+  document.getElementById('teacher-studio-bar').classList.toggle('hidden', !isTeacherMode);
+});
+
+document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+  const sb = document.getElementById('lab-sidebar');
+  sb.classList.toggle('hidden');
+  sb.classList.toggle('flex');
+});
+document.getElementById('btn-close-sidebar').addEventListener('click', () => {
+  const sb = document.getElementById('lab-sidebar');
+  sb.classList.add('hidden');
+  sb.classList.remove('flex');
+});
+
+document.getElementById('btn-teacher-dropdown').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('teacher-dropdown-menu').classList.toggle('hidden');
+});
+document.addEventListener('click', () => document.getElementById('teacher-dropdown-menu').classList.add('hidden'));
+
+function setStage(stage) {
+  currentStage = stage;
+  ['model','concepts','flashcards','quiz'].forEach(s => {
+    const el = document.getElementById(`stage-${s}`);
+    if (s === stage) {
+      el.classList.remove('hidden');
+      if (s !== 'concepts') el.classList.add('flex');
+    } else {
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+  });
+  document.querySelectorAll('.stage-btn').forEach(btn => {
+    const active = btn.dataset.stage === stage;
+    btn.className = active
+      ? 'stage-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1865F2] text-white shadow-sm cursor-pointer'
+      : 'stage-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200 cursor-pointer';
+  });
+  if (stage === 'concepts') { renderConcepts(); markStepDone(currentModelKey, 'concepts', 15); }
+  if (stage === 'flashcards') startFlashcards();
+  if (stage === 'quiz') startInteractiveQuiz();
+  renderSidebar();
+}
+document.querySelectorAll('.stage-btn').forEach(btn => btn.addEventListener('click', () => setStage(btn.dataset.stage)));
+
+function renderConcepts() {
+  const m = M();
+  document.getElementById('concepts-content').innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <div class="text-xs font-extrabold uppercase tracking-wider text-[#1865F2] mb-1">${m.unitNum} • Visual Diagram</div>
+      <h2 class="text-xl font-extrabold text-[#0B2149] mb-4">${m.emoji} ${m.appTitle}</h2>
+      ${m.conceptSvg}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${m.concepts.map(c => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <h3 class="text-sm font-extrabold text-[#0B2149] mb-1.5">💡 ${c.title}</h3>
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">${c.body}</p>
+        </div>`).join('')}
+    </div>`;
+}
+
+/* ================================================================
+   4. AI CONNECTION & CHAT ENGINE
+   ================================================================ */
+let aiOnline = false;
+let conversationHistory = [];
+
+async function checkAIConnection() {
+  const dot = document.getElementById('ai-status-dot');
+  const txt = document.getElementById('ai-status-text');
+  const lbl = document.getElementById('chat-mode-label');
+  try {
+    const res = await fetch('/api/status', { signal: AbortSignal.timeout(2000) });
+    const data = await res.json();
+    if (data.ok && data.hasKey) {
+      aiOnline = true;
+      dot.className = 'w-2 h-2 rounded-full bg-[#14BF96] shrink-0';
+      txt.textContent = `${data.provider} AI Online`;
+      lbl.textContent = `${data.provider} AI • Ready`;
+      return;
+    }
+  } catch {}
+  aiOnline = false;
+  dot.className = 'w-2 h-2 rounded-full bg-amber-400 shrink-0';
+  txt.textContent = 'Offline Knowledge Mode';
+  lbl.textContent = 'Offline Mode • Built-in Tutor';
+}
+
+async function callAI(userMessage) {
+  let bookContext = '';
+  if (useBookContext && bookPages.length) {
+    let matches = searchBookPages(userMessage, 3);
+    if (matches.length) {
+      bookContext = `\n\nTEXTBOOK REFERENCE ("${bookTitle}"):\n` +
+        matches.map(m => `[Book p.${m.page}]: ${m.text.slice(0, 1200)}`).join('\n\n') +
+        `\nCite page numbers like "(Book p. X)" when helpful.`;
+    }
+  }
+  conversationHistory.push({ role: 'user', content: userMessage });
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{ role: 'system', content: M().systemPrompt + bookContext }, ...conversationHistory.slice(-10)]
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const reply = data?.choices?.[0]?.message?.content;
+  if (!reply) throw new Error('Empty');
+  conversationHistory.push({ role: 'assistant', content: reply });
+  return reply;
+}
+
+/* ================================================================
+   5. OFFLINE KNOWLEDGE BASE (Fallback + Flashcards)
+   ================================================================ */
+const OFFLINE_BANK = {
+  rose: {
+    1:'The **Anther (#1)** is the yellow pollen factory at the tip of the stamen.',
+    2:'The **Filament (#2)** is the thin stalk holding the anther up for bees.',
+    3:'**Stamens (#3)** are the male parts made of the Anther + Filament.',
+    4:'The **Stigma (#4)** is the sticky landing pad in the center that catches pollen.',
+    5:'The **Ovary (#5)** holds tiny ovules that grow into rose seeds after fertilization.',
+    6:'The **Carpel (#6)** is the female center (Stigma + Style + Ovary).',
+    7:'The **Nectary (#7)** makes sweet sugary nectar as a snack for pollinators.',
+    8:'**Petals (#8)** are colorful, scented leaves that attract bees and butterflies.',
+    9:'**Sepals (#9)** are green flaps that protected the closed flower bud.',
+    10:'The **Stem (#10)** carries water up from roots and holds the flower up.'
+  },
+  circulatory: {
+    1:'The **Heart (#1)** is a 4-chambered muscle that pumps blood ~100,000 times a day.',
+    2:'**Arteries (#2)** carry oxygen-rich blood AWAY from the heart.',
+    3:'**Veins (#3)** carry blood BACK to the heart using one-way valves.',
+    4:'**Capillaries (#4)** are microscopic 1-cell-thick vessels where O₂ enters cells.',
+    5:'The **Aorta (#5)** is the largest artery leaving the heart.',
+    6:'**Red Blood Cells (#6)** use hemoglobin to carry oxygen everywhere.',
+    7:'**White Blood Cells (#7)** fight germs, bacteria, and viruses.',
+    8:'**Platelets (#8)** clot blood and form scabs when you get a cut.',
+    9:'The **Lungs Circuit (#9)** swaps carbon dioxide for fresh oxygen.',
+    10:'**Plasma (#10)** is the golden liquid river carrying cells and nutrients.'
+  },
+  cell: {
+    1:'The **Cell Wall (#1)** is a rigid cellulose box giving plant cells shape.',
+    2:'The **Cell Membrane (#2)** controls what enters and leaves the cell.',
+    3:'The **Nucleus (#3)** holds DNA and directs all cell activities.',
+    4:'**Chloroplasts (#4)** use sunlight to make sugar via photosynthesis.',
+    5:'**Mitochondria (#5)** are the powerhouses releasing energy from food.',
+    6:'The **Vacuole (#6)** is a large water sac keeping the plant cell firm.',
+    7:'**Cytoplasm (#7)** is the jelly-like fluid filling the cell.',
+    8:'**Ribosomes (#8)** build essential proteins for the cell.',
+    9:'The **Golgi Body (#9)** packages and ships proteins.',
+    10:'The **ER Network (#10)** transports materials inside the cell.'
+  },
+  respiratory: {
+    1:'The **Nasal Cavity (#1)** warms, moistens, and filters incoming air.',
+    2:'The **Pharynx (#2)** (throat) connects nose and mouth to the larynx.',
+    3:'The **Larynx (#3)** is your voice box holding the vocal cords.',
+    4:'The **Trachea (#4)** is the windpipe leading down to the lungs.',
+    5:'**Bronchi (#5)** are the two main branches entering each lung.',
+    6:'**Bronchioles (#6)** are tiny airways leading to the alveoli.',
+    7:'The **Lungs (#7)** are spongy organs that take in oxygen.',
+    8:'**Alveoli (#8)** are grape-like air sacs where O₂ enters the blood.',
+    9:'The **Diaphragm (#9)** is a dome muscle that pulls down to inhale.',
+    10:'The **Rib Cage (#10)** protects the lungs and heart.'
+  },
+  digestive: {
+    1:'The **Mouth (#1)** chews food into small pieces to start digestion.',
+    2:'**Salivary Glands (#2)** make saliva to moisten food and digest starch.',
+    3:'The **Esophagus (#3)** pushes swallowed food down to the stomach.',
+    4:'The **Stomach (#4)** uses acid and enzymes to churn food into liquid.',
+    5:'The **Liver (#5)** makes bile to break down fats and filters blood.',
+    6:'The **Gallbladder (#6)** stores bile until needed for fatty foods.',
+    7:'The **Pancreas (#7)** makes digestive enzymes and insulin.',
+    8:'The **Small Intestine (#8)** absorbs nutrients into the bloodstream.',
+    9:'The **Large Intestine (#9)** absorbs water from leftover waste.',
+    10:'The **Rectum (#10)** stores solid waste before removal.'
+  }
+};
+
+function getOfflineReply(text) {
+  const lower = text.toLowerCase();
+  const bank = OFFLINE_BANK[currentModelKey];
+  if (lower.includes('10 question')) {
+    return `📋 **10 Student Questions — ${M().appTitle}**\n\n` +
+      M().parts.map((p, i) => `**${i+1}.** What is the role of **${p.name} (#${p.num})**?`).join('\n') +
+      `\n\n✅ **Answer Key:**\n` + M().parts.map((p, i) => `${i+1}. ${bank[p.num].replace(/\*\*/g, '')}`).join('\n');
+  }
+  for (const p of M().parts) {
+    if (lower.includes(`#${p.num}`) || lower.includes(p.name.toLowerCase())) {
+      return `${M().emoji} ${bank[p.num]}`;
+    }
+  }
+  return `${M().emoji} Ask me about any of the 10 parts of **${M().appTitle}**, or click **📋 10 Questions** above!`;
+}
+
+/* ================================================================
+   6. CHAT UI, VOICE & HIDE/REVEAL ANSWERS
+   ================================================================ */
+const chatMessagesEl = document.getElementById('chat-messages');
+let autoSpeak = false;
+
+function speakText(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const clean = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/[#🌹❤️🧬🫁🍽️🌱✅❌🎯📋🗂️💡🔄✨]/g, '');
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(clean));
+}
+
+document.getElementById('btn-tts-toggle').addEventListener('click', function() {
+  autoSpeak = !autoSpeak;
+  this.textContent = autoSpeak ? '🔊' : '🔇';
+  if (!autoSpeak && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+});
+
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const btnMic = document.getElementById('btn-mic');
+if (SpeechRec) {
+  const rec = new SpeechRec();
+  rec.lang = 'en-US';
+  btnMic.addEventListener('click', () => { try { btnMic.textContent = '🔴'; rec.start(); } catch {} });
+  rec.onresult = (e) => {
+    const t = e.results?.[0]?.[0]?.transcript;
+    btnMic.textContent = '🎙️';
+    if (t) sendChatMessage(t);
+  };
+  rec.onerror = rec.onend = () => { btnMic.textContent = '🎙️'; };
+} else { btnMic.classList.add('opacity-40'); }
+
+function formatMD(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong class="font-bold text-[#0B2149]">$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em class="text-slate-600">$1</em>')
+    .replace(/^(\d+)\. (.+)$/gm,'<span class="block mt-1"><span class="font-bold text-[#1865F2]">$1.</span> $2</span>')
+    .replace(/\n/g,'<br>');
+}
+
+function appendMessage(role, htmlText, rawPlain = '') {
+  const w = document.createElement('div');
+  w.className = 'msg-anim';
+  if (role === 'user') {
+    w.classList.add('flex','justify-end');
+    w.innerHTML = `<div class="bg-[#1865F2] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-xs sm:text-[13px] max-w-[85%] shadow-sm">${htmlText}</div>`;
+  } else {
+    let processed = htmlText;
+    const akIdx = processed.indexOf('✅');
+    if (akIdx !== -1 && (processed.includes('Answer Key') || processed.includes('Answers:'))) {
+      const uid = 'ak-' + Date.now() + Math.floor(Math.random()*999);
+      processed = `${processed.slice(0, akIdx)}
+        <div class="mt-2 pt-2 border-t border-slate-200">
+          <button type="button" onclick="document.getElementById('${uid}').classList.toggle('hidden'); this.textContent = document.getElementById('${uid}').classList.contains('hidden') ? '👁️ Reveal Answer Key' : '🙈 Hide Answer Key';"
+            class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[11px] font-bold cursor-pointer">👁️ Reveal Answer Key</button>
+          <div id="${uid}" class="hidden mt-2 text-emerald-800 text-xs leading-relaxed">${processed.slice(akIdx)}</div>
+        </div>`;
+    }
+    w.classList.add('flex','items-start','gap-2');
+    w.innerHTML = `
+      <div class="w-7 h-7 rounded-full bg-[#0B2149] text-white flex items-center justify-center text-xs shrink-0 mt-0.5">${M().buddyAvatar}</div>
+      <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs sm:text-[13px] text-slate-700 max-w-[88%] shadow-sm leading-relaxed">
+        <div>${processed}</div>
+        ${rawPlain ? `<button type="button" class="speak-btn mt-1.5 text-[10px] font-bold text-[#1865F2] hover:underline cursor-pointer">🔊 Listen</button>` : ''}
+      </div>`;
+    const sb = w.querySelector('.speak-btn');
+    if (sb) sb.addEventListener('click', () => speakText(rawPlain));
+    if (autoSpeak && rawPlain) speakText(rawPlain);
+  }
+  chatMessagesEl.appendChild(w);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function showTyping() {
+  const id = 't-' + Date.now();
+  const w = document.createElement('div');
+  w.id = id; w.className = 'flex items-start gap-2';
+  w.innerHTML = `<div class="w-7 h-7 rounded-full bg-[#0B2149] text-white flex items-center justify-center text-xs">${M().buddyAvatar}</div>
+    <div class="bg-white border border-slate-200 rounded-2xl px-3.5 py-3 flex gap-1.5">
+      <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+      <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+      <span class="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+    </div>`;
+  chatMessagesEl.appendChild(w);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  return id;
+}
+
+function addCopyPrintButtons(plain) {
+  const w = document.createElement('div');
+  w.className = 'flex justify-end gap-2 msg-anim';
+  w.innerHTML = `
+    <button type="button" class="cp-btn px-3 py-1 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-[11px] font-bold cursor-pointer">📋 Copy</button>
+    <button type="button" class="pr-btn px-3 py-1 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-bold cursor-pointer">🖨️ Print</button>`;
+  chatMessagesEl.appendChild(w);
+  w.querySelector('.cp-btn').addEventListener('click', function() {
+    navigator.clipboard.writeText(plain.replace(/\*\*/g,'')).then(() => { this.textContent='✅ Copied!'; setTimeout(()=>this.textContent='📋 Copy',1800); });
+  });
+  w.querySelector('.pr-btn').addEventListener('click', () => printQuestionSheet(plain));
+}
+
+async function sendChatMessage(rawText, customPrompt = null) {
+  const display = rawText.trim();
+  if (!display) return;
+  if (currentView === 'home' || currentView === 'mastery') switchView('lab');
+  appendMessage('user', formatMD(display));
+  const tid = showTyping();
+  let reply = null;
+  if (aiOnline) {
+    try { reply = await callAI(customPrompt || display); }
+    catch { aiOnline = false; checkAIConnection(); }
+  }
+  if (!reply) reply = getOfflineReply(display);
+  document.getElementById(tid)?.remove();
+  appendMessage('bot', formatMD(reply), reply);
+  if (reply.includes('Answer Key') || /^\*?\*?\d+\.\*?\*?/.test(reply)) addCopyPrintButtons(reply);
+}
+
+function printQuestionSheet(text) {
+  const content = (text || '(Generate questions first using Teacher Mode!)').replace(/\*\*/g,'').replace(/\*/g,'');
+  document.getElementById('print-area').innerHTML = `
+    <div style="font-family:sans-serif;max-width:700px;margin:0 auto;">
+      <h1 style="font-size:20pt;color:#0B2149;border-bottom:3px solid #14BF96;padding-bottom:8px;">${M().emoji} ${M().appTitle} — Worksheet</h1>
+      <pre style="white-space:pre-wrap;font-family:sans-serif;font-size:11pt;line-height:1.6;margin-top:16px;">${content}</pre>
+    </div>`;
+  document.getElementById('print-area').classList.remove('hidden');
+  setTimeout(() => { window.print(); document.getElementById('print-area').classList.add('hidden'); }, 100);
+}
+
+/* ================================================================
+   7. SWITCH MODEL, FLASHCARDS & QUIZ
+   ================================================================ */
+function switchModel(key, announce = true) {
+  if (!MODELS[key]) return;
+  currentModelKey = key;
+  const m = M();
+  document.getElementById('buddy-title').textContent = m.buddyTitle;
+  document.getElementById('buddy-avatar').textContent = m.buddyAvatar;
+  document.getElementById('sketchfab-iframe').src = m.embedUrl;
+  document.getElementById('model-attribution').innerHTML = m.attributionHtml;
+
+  const chips = document.getElementById('part-guide-chips');
+  chips.innerHTML = '';
+  m.parts.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'shrink-0 px-2.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-[#1865F2] text-xs font-bold text-[#0B2149] flex items-center gap-1.5 cursor-pointer transition';
+    b.innerHTML = `<span class="w-5 h-5 rounded-full bg-[#1865F2] text-white text-[10px] flex items-center justify-center">${p.num}</span><span>${p.name}</span>`;
+    b.addEventListener('click', () => sendChatMessage(`What is #${p.num} ${p.name} and what does it do?`));
+    chips.appendChild(b);
+  });
+
+  const qp = document.getElementById('quick-prompts-bar');
+  qp.innerHTML = '';
+  m.quickPrompts.forEach(q => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer';
+    b.textContent = q.text;
+    b.addEventListener('click', () => sendChatMessage(q.text));
+    qp.appendChild(b);
+  });
+
+  conversationHistory = [];
+  if (announce) {
+    chatMessagesEl.innerHTML = '';
+    appendMessage('bot', m.welcomeHtml);
+  }
+  setStage('model');
+  renderSidebar();
+}
+
+// Flashcards
+let fcDeck=[], fcIdx=0, fcFlipped=false, fcMastered=0;
+function startFlashcards() {
+  const bank = OFFLINE_BANK[currentModelKey];
+  fcDeck = M().parts.map(p => ({ num:p.num, name:p.name, back: bank[p.num].replace(/\*\*/g,'') }));
+  fcIdx=0; fcFlipped=false; fcMastered=0;
+  renderFlashcard();
+}
+function renderFlashcard() {
+  if (!fcDeck.length) {
+    document.getElementById('fc-side-badge').textContent='COMPLETE 🎉';
+    document.getElementById('fc-text').textContent='All 10 parts mastered!';
+    document.getElementById('fc-hint').textContent='Awesome work!';
+    markStepDone(currentModelKey, 'flashcards', 25);
+    return;
+  }
+  const c = fcDeck[fcIdx % fcDeck.length];
+  document.getElementById('fc-sub').textContent = `${fcDeck.length} cards remaining`;
+  document.getElementById('fc-mastered').textContent = fcMastered;
+  if (!fcFlipped) {
+    document.getElementById('fc-side-badge').textContent = `CARD #${c.num} • TAP TO FLIP`;
+    document.getElementById('fc-text').textContent = c.name;
+    document.getElementById('fc-text').className = 'text-2xl font-extrabold text-[#0B2149]';
+    document.getElementById('fc-hint').textContent = 'Click card to reveal explanation';
+  } else {
+    document.getElementById('fc-side-badge').textContent = `EXPLANATION • #${c.num}`;
+    document.getElementById('fc-text').textContent = c.back;
+    document.getElementById('fc-text').className = 'text-sm font-semibold text-slate-700 leading-relaxed';
+    document.getElementById('fc-hint').textContent = 'Mark Got It or Study Again';
+  }
+}
+document.getElementById('fc-card').addEventListener('click', () => { if(fcDeck.length){ fcFlipped=!fcFlipped; renderFlashcard(); } });
+document.getElementById('btn-fc-gotit').addEventListener('click', () => { if(fcDeck.length){ fcDeck.splice(fcIdx%fcDeck.length,1); fcMastered++; fcFlipped=false; renderFlashcard(); } });
+document.getElementById('btn-fc-review').addEventListener('click', () => { if(fcDeck.length){ fcIdx=(fcIdx+1)%fcDeck.length; fcFlipped=false; renderFlashcard(); } });
+
+// Quiz + Confetti
+let quizIdx=0, quizScore=0, quizAnswered=false, shuffledQ=[];
+function launchConfetti() {
+  const colors = ['#14BF96','#1865F2','#FFB100','#e11d48','#7c3aed'];
+  for (let i=0; i<36; i++) {
+    const d = document.createElement('div');
+    d.className = 'confetti-piece';
+    d.style.left = Math.random()*100 + 'vw';
+    d.style.background = colors[i % colors.length];
+    d.style.animationDelay = (Math.random()*0.4)+'s';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 2500);
+  }
+}
+
+function startInteractiveQuiz(customQ = null, subtitle = null) {
+  if (currentView !== 'lab') switchView('lab');
+  if (currentStage !== 'quiz') {
+    currentStage = 'quiz';
+    ['model','concepts','flashcards','quiz'].forEach(s => {
+      const el = document.getElementById(`stage-${s}`);
+      el.classList.toggle('hidden', s !== 'quiz');
+      if (s === 'quiz') el.classList.add('flex');
+    });
+    renderSidebar();
+  }
+  shuffledQ = customQ ? customQ : [...M().quizQuestions].sort(()=>Math.random()-.5);
+  quizIdx=0; quizScore=0; quizAnswered=false;
+  document.getElementById('quiz-score').textContent='0';
+  document.getElementById('quiz-total').textContent=shuffledQ.length;
+  document.getElementById('btn-quiz-next').classList.add('hidden');
+  document.getElementById('btn-quiz-restart').classList.add('hidden');
+  renderQuizQ(subtitle);
+}
+
+function renderQuizQ(subtitle = null) {
+  if (quizIdx >= shuffledQ.length) { renderQuizResult(); return; }
+  const q = shuffledQ[quizIdx];
+  quizAnswered = false;
+  document.getElementById('btn-quiz-next').classList.add('hidden');
+  document.getElementById('quiz-progress-bar').style.width = Math.round((quizIdx/shuffledQ.length)*100)+'%';
+  document.getElementById('quiz-panel-sub').textContent = (subtitle ? subtitle + ' • ' : '') + `Question ${quizIdx+1} of ${shuffledQ.length}`;
+  const letters = ['A','B','C','D'];
+  document.getElementById('quiz-body').innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <div class="text-xs font-extrabold uppercase tracking-wider text-[#1865F2] mb-2">${M().emoji} Mastery Check</div>
+      <p class="text-base sm:text-lg font-extrabold text-[#0B2149] mb-5">${q.q}</p>
+      <div class="space-y-2.5">
+        ${q.options.map((o,i)=>`
+          <button type="button" class="quiz-option w-full text-left px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-700 flex items-center gap-3 cursor-pointer" data-idx="${i}">
+            <span class="w-7 h-7 rounded-full bg-white border border-slate-300 text-[#0B2149] flex items-center justify-center font-extrabold text-xs shrink-0">${letters[i]}</span>
+            <span>${o}</span>
+          </button>`).join('')}
+      </div>
+      <div id="quiz-feedback" class="hidden mt-4 p-4 rounded-xl text-sm"></div>
+    </div>`;
+  document.querySelectorAll('.quiz-option').forEach(b => b.addEventListener('click', () => {
+    if (quizAnswered) return;
+    quizAnswered = true;
+    const sel = parseInt(b.dataset.idx);
+    const ok = sel === q.correct;
+    if (ok) quizScore++;
+    document.querySelectorAll('.quiz-option').forEach((btn, i) => {
+      if (i === q.correct) btn.classList.add('correct');
+      else if (i === sel && !ok) btn.classList.add('wrong');
+    });
+    const fb = document.getElementById('quiz-feedback');
+    fb.classList.remove('hidden');
+    fb.className = ok ? 'mt-4 p-4 rounded-xl text-sm bg-emerald-50 border border-emerald-200 text-emerald-900' : 'mt-4 p-4 rounded-xl text-sm bg-rose-50 border border-rose-200 text-rose-900';
+    fb.innerHTML = (ok ? '✅ <strong>Correct!</strong> ' : '❌ <strong>Not quite.</strong> ') + formatMD(q.explanation);
+    document.getElementById('quiz-score').textContent = quizScore;
+    document.getElementById('btn-quiz-next').textContent = quizIdx+1 < shuffledQ.length ? 'Next →' : 'See Results 🏆';
+    document.getElementById('btn-quiz-next').classList.remove('hidden');
+  }));
+}
+
+function renderQuizResult() {
+  document.getElementById('quiz-progress-bar').style.width='100%';
+  const pct = Math.round((quizScore/shuffledQ.length)*100);
+  if (pct >= 70) { launchConfetti(); markStepDone(currentModelKey, 'quiz', 50); }
+  document.getElementById('quiz-body').innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm space-y-4">
+      <div class="text-5xl">${pct>=80?'🏆':pct>=60?'⭐':'👍'}</div>
+      <h3 class="text-2xl font-extrabold text-[#0B2149]">${pct>=80?'Unit Mastered!':'Quiz Complete!'}</h3>
+      <p class="text-sm text-slate-600">You scored <strong class="text-[#14BF96]">${quizScore} / ${shuffledQ.length}</strong> (${pct}%)</p>
+      <div class="flex items-center justify-center gap-2 max-w-xs mx-auto">
+        <input id="student-name-input" type="text" placeholder="Enter student name…" class="flex-1 min-h-[38px] bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs" />
+        <button id="btn-save-score" type="button" class="min-h-[38px] px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#0B2149] font-extrabold text-xs cursor-pointer">Save</button>
+      </div>
+      ${pct >= 70 ? `<button id="btn-print-cert" type="button" class="px-5 py-2.5 rounded-xl bg-[#0B2149] hover:bg-[#1865F2] text-white text-xs font-bold cursor-pointer">🎓 Print Certificate</button>` : ''}
+    </div>`;
+  document.getElementById('btn-save-score').addEventListener('click', function() {
+    const name = (document.getElementById('student-name-input').value || '').trim() ||
+      (window.currentUser ? window.currentUser.name : 'Student');
+    const btn = this;
+    btn.textContent = '⏳ Saving…';
+    btn.disabled = true;
+    // Save to backend
+    fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, unit: M().appTitle, emoji: M().emoji, pct })
+    }).then(r => r.json()).then(data => {
+      btn.textContent = '✅ Saved!';
+      renderMasteryView();
+    }).catch(() => {
+      // Fallback to localStorage
+      const list = JSON.parse(localStorage.getItem('science_leaderboard') || '[]');
+      list.unshift({ name, model: M().emoji, pct });
+      list.sort((a,b)=>b.pct-a.pct);
+      localStorage.setItem('science_leaderboard', JSON.stringify(list.slice(0,15)));
+      btn.textContent = '✅ Saved (local)!';
+      renderMasteryView();
+    });
+  });
+  const cb = document.getElementById('btn-print-cert');
+  if (cb) cb.addEventListener('click', () => {
+    const name = (document.getElementById('student-name-input').value || '').trim() || 'Science Star';
+    document.getElementById('print-area').innerHTML = `
+      <div style="font-family:Georgia,serif;max-width:720px;margin:20px auto;padding:40px;border:8px double #0B2149;text-align:center;">
+        <div style="font-size:42pt;">🎓</div>
+        <h1 style="font-size:26pt;color:#0B2149;">Certificate of Achievement</h1>
+        <p style="font-size:13pt;color:#555;">This certifies that</p>
+        <h2 style="font-size:24pt;color:#14BF96;border-bottom:2px solid #ccc;display:inline-block;padding:0 24px;">${name}</h2>
+        <p style="font-size:13pt;margin-top:16px;">mastered <strong>${M().appTitle}</strong> with a score of <strong>${pct}%</strong>!</p>
+      </div>`;
+    document.getElementById('print-area').classList.remove('hidden');
+    setTimeout(() => { window.print(); document.getElementById('print-area').classList.add('hidden'); }, 100);
+  });
+  document.getElementById('btn-quiz-next').classList.add('hidden');
+  document.getElementById('btn-quiz-restart').classList.remove('hidden');
+}
+
+document.getElementById('btn-quiz-next').addEventListener('click', () => { quizIdx++; renderQuizQ(); });
+document.getElementById('btn-quiz-restart').addEventListener('click', () => startInteractiveQuiz());
+
+/* ================================================================
+   8. TEXTBOOK / PDF ENGINE (PDF.js + Chapters + Page-Range Quiz)
+   ================================================================ */
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfDoc=null, currentBookPage=1, totalBookPages=0, bookPages=[], bookTitle='New Oxford Secondary Science TG 6', useBookContext=true;
+
+document.getElementById('btn-use-book-toggle').addEventListener('click', function() {
+  useBookContext = !useBookContext;
+  this.textContent = useBookContext ? '📖 Book: ON' : '📖 Book: OFF';
+  this.className = useBookContext
+    ? 'shrink-0 px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-[11px] font-bold cursor-pointer'
+    : 'shrink-0 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold cursor-pointer';
+});
+
+async function renderPdfPage(num) {
+  if (!pdfDoc) return;
+  currentBookPage = Math.max(1, Math.min(num, totalBookPages));
+  document.getElementById('book-page-indicator').textContent = `${currentBookPage} / ${totalBookPages}`;
+  const page = await pdfDoc.getPage(currentBookPage);
+  const canvas = document.getElementById('pdf-canvas');
+  const linkLayer = document.getElementById('pdf-link-layer');
+  const linksBar = document.getElementById('book-page-links-bar');
+  const wrapW = Math.max(320, document.getElementById('book-canvas-wrap').clientWidth - 40);
+  const unscaled = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: Math.min(1.6, wrapW / unscaled.width) });
+  canvas.height = viewport.height; canvas.width = viewport.width;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+  // Render clickable PDF Link Annotations + collect URLs
+  linkLayer.innerHTML = '';
+  const foundUrls = new Set();
+  try {
+    const annotations = await page.getAnnotations();
+    for (const ann of annotations) {
+      if (ann.subtype !== 'Link' || !ann.rect) continue;
+      const rect = pdfjsLib.Util.normalizeRect(viewport.convertToViewportRectangle(ann.rect));
+      const leftPct   = (rect[0] / viewport.width) * 100;
+      const topPct    = (rect[1] / viewport.height) * 100;
+      const widthPct  = ((rect[2] - rect[0]) / viewport.width) * 100;
+      const heightPct = ((rect[3] - rect[1]) / viewport.height) * 100;
+
+      if (ann.url) {
+        foundUrls.add(ann.url);
+        const a = document.createElement('a');
+        a.href = ann.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.title = `Open link: ${ann.url}`;
+        a.className = 'pointer-events-auto absolute rounded bg-sky-400/10 hover:bg-sky-400/30 border border-sky-500/40 transition cursor-pointer';
+        a.style.cssText = `left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;`;
+        linkLayer.appendChild(a);
+      } else if (ann.dest) {
+        // Internal PDF link (e.g., Table of Contents -> Chapter page)
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Jump to section';
+        btn.className = 'pointer-events-auto absolute rounded hover:bg-amber-400/25 border border-transparent hover:border-amber-500/50 transition cursor-pointer';
+        btn.style.cssText = `left:${leftPct}%;top:${topPct}%;width:${widthPct}%;height:${heightPct}%;`;
+        btn.addEventListener('click', async () => {
+          try {
+            const dest = typeof ann.dest === 'string' ? await pdfDoc.getDestination(ann.dest) : ann.dest;
+            if (dest && dest[0]) {
+              const pageIdx = await pdfDoc.getPageIndex(dest[0]);
+              renderPdfPage(pageIdx + 1);
+            }
+          } catch {}
+        });
+        linkLayer.appendChild(btn);
+      }
+    }
+  } catch {}
+
+  // Also extract any plain-text URLs printed on the page
+  try {
+    const tc = await page.getTextContent();
+    const pageText = tc.items.map(i => i.str).join(' ');
+    const urlMatches = pageText.match(/(?:https?:\/\/|www\.)[^\s,;)"'<>]+/gi) || [];
+    for (let u of urlMatches) {
+      u = u.replace(/[.)]+$/, '');
+      if (u.startsWith('www.')) u = 'https://' + u;
+      foundUrls.add(u);
+    }
+  } catch {}
+
+  if (foundUrls.size > 0) {
+    linksBar.innerHTML = `<span class="text-[11px] font-extrabold text-sky-800 shrink-0">🔗 Links on p.${currentBookPage}:</span>`;
+    foundUrls.forEach(u => {
+      const pill = document.createElement('a');
+      pill.href = u;
+      pill.target = '_blank';
+      pill.rel = 'noopener noreferrer';
+      pill.className = 'shrink-0 px-2.5 py-1 rounded-full bg-white hover:bg-sky-100 border border-sky-300 text-[11px] font-semibold text-sky-700 underline truncate max-w-[260px]';
+      pill.textContent = u.replace(/^https?:\/\//, '');
+      pill.title = u;
+      linksBar.appendChild(pill);
+    });
+    linksBar.classList.remove('hidden');
+  } else {
+    linksBar.classList.add('hidden');
+  }
+}
+
+async function loadBookFromSource(src, title) {
+  if (!window.pdfjsLib) return;
+  bookTitle = title;
+  document.getElementById('book-title-label').textContent = title;
+  document.getElementById('book-index-status').textContent = 'Opening PDF…';
+  bookPages = [];
+  try {
+    pdfDoc = await pdfjsLib.getDocument(src).promise;
+    totalBookPages = pdfDoc.numPages;
+    if (currentView === 'book') renderPdfPage(1);
+    document.getElementById('book-page-indicator').textContent = `1 / ${totalBookPages}`;
+    for (let p = 1; p <= totalBookPages; p++) {
+      const page = await pdfDoc.getPage(p);
+      const tc = await page.getTextContent();
+      bookPages.push({ page: p, text: tc.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim() });
+      if (p % 12 === 0 || p === totalBookPages) {
+        document.getElementById('book-index-status').textContent = p === totalBookPages ? `✅ Ready (${totalBookPages} pages)` : `Indexing ${p}/${totalBookPages}…`;
+      }
+    }
+    const sel = document.getElementById('book-chapter-select');
+    sel.innerHTML = '<option value="">📑 Jump to Chapter…</option>';
+    const seen = new Set();
+    for (const p of bookPages) {
+      const m = p.text.match(/\b((?:Unit|Chapter)\s+\d+(?:\s*[:\-–.]\s*[A-Za-z0-9 ,&'-]{3,40})?)/i);
+      if (m && !seen.has(m[1].toLowerCase().slice(0,12))) {
+        seen.add(m[1].toLowerCase().slice(0,12));
+        const opt = document.createElement('option');
+        opt.value = p.page; opt.textContent = `p.${p.page} — ${m[1]}`;
+        sel.appendChild(opt);
+      }
+    }
+  } catch { document.getElementById('book-index-status').textContent = '⚠️ Could not load PDF'; }
+}
+
+function searchBookPages(q, topK=3) {
+  const words = q.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2);
+  return bookPages.map(p => {
+    const l = p.text.toLowerCase();
+    let s = 0;
+    for (const w of words) if (l.includes(w)) s += 2;
+    return { page: p.page, text: p.text, score: s };
+  }).filter(p=>p.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
+}
+
+document.getElementById('book-chapter-select').addEventListener('change', function() { if(this.value) renderPdfPage(parseInt(this.value)); });
+document.getElementById('btn-book-prev').addEventListener('click', () => renderPdfPage(currentBookPage - 1));
+document.getElementById('btn-book-next').addEventListener('click', () => renderPdfPage(currentBookPage + 1));
+document.getElementById('btn-ask-this-page').addEventListener('click', () => {
+  switchView('lab');
+  sendChatMessage(`Summarize page ${currentBookPage} of ${bookTitle} and give 5 student questions.`);
+});
+document.getElementById('btn-open-related-chapter').addEventListener('click', () => {
+  switchView('book');
+  const hits = searchBookPages(M().bookKeywords, 3);
+  if (hits.length) { renderPdfPage(hits[0].page); document.getElementById('range-from').value=hits[0].page; document.getElementById('range-to').value=Math.min(totalBookPages,hits[0].page+3); }
+});
+document.getElementById('book-file-input').addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if(!f) return;
+  loadBookFromSource({ data: await f.arrayBuffer() }, f.name);
+});
+document.getElementById('book-search-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const hits = searchBookPages(document.getElementById('book-search-input').value, 5);
+  if (hits.length) { renderPdfPage(hits[0].page); document.getElementById('book-search-result').textContent = `p. ${hits.map(h=>h.page).join(', ')}`; }
+});
+document.getElementById('btn-range-questions').addEventListener('click', () => {
+  const a = parseInt(document.getElementById('range-from').value)||1, b = parseInt(document.getElementById('range-to').value)||a;
+  const txt = bookPages.filter(p=>p.page>=a&&p.page<=b).map(p=>`[p.${p.page}]: ${p.text.slice(0,1100)}`).join('\n\n').slice(0,8500);
+  sendChatMessage(`📋 Generate 10 questions from Book pages ${a}–${b}`, `Generate 10 numbered student questions with an "✅ Answer Key:" strictly from pages ${a}–${b} of ${bookTitle}:\n\n${txt}`);
+});
+document.getElementById('btn-range-quiz').addEventListener('click', async () => {
+  const a = parseInt(document.getElementById('range-from').value)||1, b = parseInt(document.getElementById('range-to').value)||a;
+  const txt = bookPages.filter(p=>p.page>=a&&p.page<=b).map(p=>`[p.${p.page}]: ${p.text.slice(0,1100)}`).join('\n\n').slice(0,8500);
+  if (!aiOnline || !txt) { startInteractiveQuiz(); return; }
+  switchView('lab');
+  try {
+    const raw = await callAI(`Create a 5-question MCQ quiz from pages ${a}–${b}. Return ONLY valid JSON array: [{"q":"?","options":["A","B","C","D"],"correct":0,"explanation":"..."}]\n\n${txt}`);
+    const parsed = JSON.parse(raw.replace(/```json|```/gi,'').match(/\[[\s\S]*\]/)[0]);
+    startInteractiveQuiz(parsed, `Book p.${a}–${b}`);
+  } catch { startInteractiveQuiz(); }
+});
+
+/* ================================================================
+   9. FORM, TEACHER BAR & INIT
+   ================================================================ */
+document.querySelectorAll('.teacher-action').forEach(b => b.addEventListener('click', () => {
+  document.getElementById('teacher-dropdown-menu').classList.add('hidden');
+  const a = b.dataset.action;
+  if (a==='gen10') sendChatMessage(`Give me 10 questions about ${M().appTitle} for my students`);
+  if (a==='gen5')  sendChatMessage(`Give me 5 quiz questions about ${M().appTitle}`);
+  if (a==='genMCQ')sendChatMessage(`Generate a multiple choice quiz sheet about ${M().appTitle}`);
+  if (a==='printQ')printQuestionSheet('');
+}));
+document.getElementById('chat-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const inp = document.getElementById('chat-input');
+  const v = inp.value; inp.value=''; sendChatMessage(v);
+});
+document.getElementById('btn-clear-chat').addEventListener('click', () => {
+  conversationHistory=[]; chatMessagesEl.innerHTML=''; appendMessage('bot', M().welcomeHtml);
+});
+
+window.onload = () => {
+  switchModel('rose', true);
+  renderProgressUI();
+  switchView('home');
+  checkAIConnection();
+  loadBookFromSource('/books/New-Oxford-Secondary-Science-tg-6.pdf', 'New Oxford Secondary Science TG 6');
+  // Check if user already has a session
+  fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+    if (data && data.user) {
+      applyLoggedInUser(data.user);
+    }
+  }).catch(() => {});
+};
+
+/* ================================================================
+   10. AUTH UI — Login / Register / Logout
+   ================================================================ */
+function applyLoggedInUser(user) {
+  window.currentUser = user;
+  // Load server-side progress
+  if (user.xp !== undefined) {
+    progress.xp = user.xp || 0;
+    if (user.units) progress.units = Object.assign(progress.units, user.units);
+    saveProgress();
+    renderProgressUI();
+  }
+  // Update navbar
+  document.getElementById('nav-user-badge').textContent = `👤 ${user.name || user.username}`;
+  document.getElementById('nav-user-badge').classList.remove('hidden');
+  document.getElementById('btn-open-auth').classList.add('hidden');
+  document.getElementById('btn-logout').classList.remove('hidden');
+  // Teacher toggle based on role
+  if (user.role === 'teacher') {
+    isTeacherMode = true;
+    document.getElementById('role-icon').textContent = '👩‍🏫';
+    document.getElementById('role-label').textContent = 'Teacher';
+    document.getElementById('teacher-studio-bar').classList.remove('hidden');
+  }
+  closeAuthModal();
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.add('hidden');
+}
+
+function openAuthModal(tab = 'signin') {
+  document.getElementById('auth-modal').classList.remove('hidden');
+  document.getElementById('si-error').classList.add('hidden');
+  document.getElementById('su-error').classList.add('hidden');
+  if (tab === 'signup') switchAuthTab('signup');
+  else switchAuthTab('signin');
+}
+
+function switchAuthTab(tab) {
+  const isSignin = tab === 'signin';
+  document.getElementById('form-signin').classList.toggle('hidden', !isSignin);
+  document.getElementById('form-signup').classList.toggle('hidden', isSignin);
+  document.getElementById('tab-signin').className = isSignin
+    ? 'flex-1 py-2 rounded-lg text-xs font-bold bg-white text-[#0B2149] shadow cursor-pointer transition'
+    : 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer transition';
+  document.getElementById('tab-signup').className = !isSignin
+    ? 'flex-1 py-2 rounded-lg text-xs font-bold bg-white text-[#0B2149] shadow cursor-pointer transition'
+    : 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer transition';
+}
+
+document.getElementById('btn-open-auth').addEventListener('click', () => openAuthModal('signin'));
+document.getElementById('btn-auth-close').addEventListener('click', closeAuthModal);
+document.getElementById('btn-guest').addEventListener('click', closeAuthModal);
+document.getElementById('tab-signin').addEventListener('click', () => switchAuthTab('signin'));
+document.getElementById('tab-signup').addEventListener('click', () => switchAuthTab('signup'));
+// Close on backdrop click
+document.getElementById('auth-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAuthModal();
+});
+
+document.getElementById('form-signin').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = this.querySelector('button[type=submit]');
+  const errEl = document.getElementById('si-error');
+  errEl.classList.add('hidden');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('si-username').value.trim(),
+        password: document.getElementById('si-password').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    applyLoggedInUser(data.user);
+  } catch(err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
+  btn.textContent = 'Sign In'; btn.disabled = false;
+});
+
+document.getElementById('form-signup').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = this.querySelector('button[type=submit]');
+  const errEl = document.getElementById('su-error');
+  errEl.classList.add('hidden');
+  btn.textContent = 'Creating account…'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('su-name').value.trim(),
+        username: document.getElementById('su-username').value.trim(),
+        password: document.getElementById('su-password').value,
+        role: document.getElementById('su-role').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    applyLoggedInUser(data.user);
+  } catch(err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
+  btn.textContent = 'Create Account'; btn.disabled = false;
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  window.currentUser = null;
+  document.getElementById('nav-user-badge').classList.add('hidden');
+  document.getElementById('btn-open-auth').classList.remove('hidden');
+  document.getElementById('btn-logout').classList.add('hidden');
+});
+</script>
+</body>
+</html>
